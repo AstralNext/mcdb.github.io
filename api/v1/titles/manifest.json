@@ -9,6 +9,10 @@
     "titles.pack.json": {
       "bytes": 11390518,
       "rows": 143595
+    },
+    "types.json": {
+      "bytes": 545,
+      "rows": 5
     }
   }
 }

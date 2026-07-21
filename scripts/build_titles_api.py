@@ -80,8 +80,46 @@ def build(src: Path, clean: bool) -> None:
             "titles.pack.json": {
                 "bytes": pack_path.stat().st_size,
                 "rows": len(ids),
-            }
+            },
+            "types.json": {},
         },
+    }
+
+    from collections import Counter
+
+    TYPE_LABELS = {
+        "mod": "模组",
+        "modpack": "整合包",
+        "resourcepack": "资源包",
+        "datapack": "数据包",
+        "shader": "着色器",
+        "plugin": "插件",
+        "modpacks": "整合包",
+        "resource_pack": "资源包",
+        "data_pack": "数据包",
+        "minecraft_java_server": "服务器",
+    }
+    counts = Counter(types)
+    types_doc = {
+        "generated_at": manifest["generated_at"],
+        "total": len(ids),
+        "types": [
+            {
+                "id": tid,
+                "label": TYPE_LABELS.get(tid, tid),
+                "count": cnt,
+            }
+            for tid, cnt in sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+        ],
+    }
+    types_path = OUT / "types.json"
+    types_path.write_text(
+        json.dumps(types_doc, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    manifest["files"]["types.json"] = {
+        "bytes": types_path.stat().st_size,
+        "rows": len(types_doc["types"]),
     }
     (OUT / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",

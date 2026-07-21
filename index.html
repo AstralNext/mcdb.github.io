@@ -3,36 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MCDB API</title>
-  <style>
-    :root { color-scheme: light dark; font-family: "Segoe UI", system-ui, sans-serif; }
-    body { max-width: 44rem; margin: 2rem auto; padding: 0 1.25rem; line-height: 1.55; }
-    10|    code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; }
-    pre { padding: 0.9rem 1rem; overflow: auto; border-radius: 8px; background: color-mix(in srgb, CanvasText 8%, Canvas); }
-    a { color: inherit; }
-    h1 { font-size: 1.6rem; margin-bottom: 0.4rem; }
-    .muted { opacity: 0.75; }
-  </style>
+  <title>MCDB · Minecraft 中英对照目录</title>
+  <meta name="description" content="Modrinth 等项目中英译名目录，支持模糊搜索与 API 接入。" />
+  <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
-  <h1>MCDB API</h1>
-  <p class="muted">本站只托管汉化静态数据。模糊搜索请用 <a href="https://search.mcdb.astral.fan/"><code>search.mcdb.astral.fan</code></a>。</p>
-    20|
-  <h2>汉化 I18n</h2>
-  <ul>
-    <li><a href="api/v1/manifest.json"><code>api/v1/manifest.json</code></a></li>
-    <li><a href="api/v1/i18n/4141.json"><code>api/v1/i18n/4141.json</code></a>（Sodium）</li>
-  </ul>
-  <p class="muted">分片规则：<code>hex = utf8(id[0:2]).hex()</code>，按需 GET 对应 JSON。</p>
+  <header class="topbar">
+    <div class="brand">MCDB <span>中英对照</span></div>
+    <form id="search-form" class="search-form" role="search">
+      <input id="q" name="q" type="search" placeholder="搜索中/英文标题，按 Enter" autocomplete="off" />
+      <button type="submit">搜索</button>
+    </form>
+    <nav class="topbar-links">
+      <a href="/api.html">API</a>
+      <a href="https://github.com/AstralNext/MCDB" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
 
-  <h2>模糊搜索</h2>
-  <p>在线检索入口：</p>
-  <pre>POST https://search.mcdb.astral.fan/v1/search
-Content-Type: application/json
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>目录</h2>
+      <ul id="cat-list" class="cat-list"></ul>
+    </aside>
 
-{"q":"发条","limit":12}</pre>
-  <p class="muted">按英文 / 中文 / slug 标题模糊匹配（精确 &gt; 前缀 &gt; 包含）。</p>
+    <main class="main">
+      <div id="error" class="error" hidden></div>
+      <div id="status" class="status-bar">加载目录…</div>
+      <div id="results" class="results"></div>
+      <div id="pager" class="pager" hidden>
+        <button type="button" id="prev-page" class="btn secondary">上一页</button>
+        <button type="button" id="next-page" class="btn secondary">下一页</button>
+      </div>
+    </main>
+  </div>
 
-  <p class="muted">源数据 <a href="https://github.com/AstralNext/MCDB">AstralNext/MCDB</a></p>
+  <script src="/assets/app.js" defer></script>
 </body>
 </html>

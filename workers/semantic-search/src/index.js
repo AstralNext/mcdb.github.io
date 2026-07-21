@@ -3,7 +3,7 @@
  * Data: titles.pack.json
  */
 
-/** @type {null | { count: number, meta: any }} */
+/** @type {null | object} */
 let CACHE = null;
 let LOADING = null;
 
@@ -34,20 +34,37 @@ export default {
         const body = await request.json().catch(() => ({}));
         const q = String(body.q ?? body.query ?? "").trim();
         const limit = clampInt(body.limit ?? 12, 1, 50);
+        const type = String(body.type ?? "").trim() || null;
         if (!q) {
           return cors(json({ error: "empty query" }, 400));
         }
         const idx = await ensureIndex(env);
-        const hits = search(idx, q, limit);
-        return cors(json({ q, count: hits.length, hits }));
+        const hits = search(idx, q, limit, type);
+        return cors(json({ q, type, count: hits.length, hits }));
+      }
+
+      if (url.pathname === "/v1/browse" && request.method === "GET") {
+        const type = String(url.searchParams.get("type") ?? "").trim();
+        const page = clampInt(url.searchParams.get("page") ?? 0, 0, 1_000_000);
+        const limit = clampInt(url.searchParams.get("limit") ?? 50, 1, 100);
+        if (!type) {
+          return cors(json({ error: "missing type" }, 400));
+        }
+        const idx = await ensureIndex(env);
+        const result = browse(idx, type, page, limit);
+        return cors(json(result));
       }
 
       return cors(
         json({
           service: "mcdb-title-search",
           host: "search.mcdb.astral.fan",
-          endpoints: ["GET /health", "POST /v1/search"],
-          example: { q: "发条", limit: 12 },
+          endpoints: [
+            "GET /health",
+            "POST /v1/search",
+            "GET /v1/browse?type=mod&page=0&limit=50",
+          ],
+          example: { q: "发条", limit: 12, type: "mod" },
           note: "title fuzzy match on en / zh / slug",
         }),
       );
@@ -94,6 +111,23 @@ async function ensureIndex(env) {
   return LOADING;
 }
 
+function buildBrowseIndex(meta, count) {
+  /** @type {Record<string, number[]>} */
+  const byType = {};
+  for (let row = 0; row < count; row++) {
+    const t = meta.type[row] || "other";
+    (byType[t] ||= []).push(row);
+  }
+  for (const rows of Object.values(byType)) {
+    rows.sort((a, b) =>
+      (meta.en[a] || "").localeCompare(meta.en[b] || "", "en", {
+        sensitivity: "base",
+      }),
+    );
+  }
+  return byType;
+}
+
 async function loadIndex(env) {
   const base = (env.DATA_BASE_URL || "").replace(/\/$/, "");
   if (!base) throw new Error("DATA_BASE_URL not set");
@@ -104,7 +138,33 @@ async function loadIndex(env) {
   const count = meta.id?.length ?? 0;
   if (!count) throw new Error("empty titles.pack.json");
 
-  return { count, meta };
+  return { count, meta, byType: buildBrowseIndex(meta, count) };
+}
+
+function rowToHit(meta, row, score = null) {
+  const hit = {
+    id: meta.id[row] || "",
+    en: meta.en[row] || "",
+    zh: meta.zh[row] || "",
+    slug: meta.slug[row] || null,
+    type: meta.type[row] || null,
+  };
+  if (score != null) hit.score = Math.round(score * 1e6) / 1e6;
+  return hit;
+}
+
+function browse(idx, type, page, limit) {
+  const rows = idx.byType[type] || [];
+  const offset = page * limit;
+  const slice = rows.slice(offset, offset + limit);
+  return {
+    type,
+    page,
+    limit,
+    total: rows.length,
+    pages: Math.ceil(rows.length / limit) || 0,
+    items: slice.map((row) => rowToHit(idx.meta, row)),
+  };
 }
 
 function normalize(text) {
@@ -152,10 +212,11 @@ function scoreTitle(rawQuery, en, zh, slug) {
   return best;
 }
 
-function search(idx, query, limit) {
+function search(idx, query, limit, typeFilter = null) {
   const { meta, count } = idx;
   const top = [];
   for (let row = 0; row < count; row++) {
+    if (typeFilter && (meta.type[row] || "") !== typeFilter) continue;
     const score = scoreTitle(
       query,
       meta.en[row] || "",
@@ -172,12 +233,5 @@ function search(idx, query, limit) {
     }
   }
 
-  return top.map(({ score, row }) => ({
-    id: meta.id[row] || "",
-    en: meta.en[row] || "",
-    zh: meta.zh[row] || "",
-    score: Math.round(score * 1e6) / 1e6,
-    slug: meta.slug[row] || null,
-    type: meta.type[row] || null,
-  }));
+  return top.map(({ score, row }) => rowToHit(meta, row, score));
 }

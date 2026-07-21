@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCDB API 文档</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+  <style>
+    .doc { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    .doc h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .doc h2 { margin-top: 2rem; font-size: 1.15rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
+    .doc pre { padding: 0.9rem 1rem; overflow: auto; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); font-size: 0.86rem; }
+    .doc code { font-family: ui-monospace, Consolas, monospace; }
+    .doc p, .doc li { color: var(--muted); }
+    .doc a.btn { display: inline-block; margin-bottom: 1.5rem; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <a class="btn secondary" href="/">← 返回目录</a>
+    <h1>MCDB API</h1>
+    <p>静态 JSON 托管于本站；模糊搜索与分类浏览由 <code>search.mcdb.astral.fan</code> 提供。</p>
+
+    <h2 id="i18n">汉化 I18n</h2>
+    <ul>
+      <li><a href="/api/v1/manifest.json"><code>GET /api/v1/manifest.json</code></a></li>
+      <li><a href="/api/v1/i18n/4141.json"><code>GET /api/v1/i18n/{hex}.json</code></a>（示例：Sodium → <code>4141</code>）</li>
+    </ul>
+    <p>分片规则：<code>hex = utf8(id[0:2]).hex()</code>，按需 GET 后取 <code>[id]</code>。</p>
+    <pre>// Dart
+final hex = utf8.encode(id.substring(0, 2)).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+// GET https://mcdb.astral.fan/api/v1/i18n/$hex.json</pre>
+
+    <h2 id="titles">标题索引</h2>
+    <ul>
+      <li><a href="/api/v1/titles/manifest.json"><code>GET /api/v1/titles/manifest.json</code></a></li>
+      <li><a href="/api/v1/titles/types.json"><code>GET /api/v1/titles/types.json</code></a> — 分类目录与条数</li>
+      <li><code>GET /api/v1/titles/titles.pack.json</code> — 全量并行数组（约 11MB，供 Worker 拉取）</li>
+    </ul>
+
+    <h2 id="search">模糊搜索</h2>
+    <pre>POST https://search.mcdb.astral.fan/v1/search
+Content-Type: application/json
+
+{"q":"机械","limit":20,"type":"mod"}</pre>
+    <p>按英文 / 中文 / slug 匹配（精确 &gt; 前缀 &gt; 包含）。可选 <code>type</code> 限定分类。</p>
+
+    <h2 id="browse">分类浏览</h2>
+    <pre>GET https://search.mcdb.astral.fan/v1/browse?type=mod&amp;page=0&amp;limit=50</pre>
+    <p>按英文标题字母序分页返回某分类下的条目（供 Web 目录与客户端浏览）。</p>
+
+    <h2>数据源</h2>
+    <p><a href="https://github.com/AstralNext/MCDB">AstralNext/MCDB</a> · 每小时同步</p>
+  </div>
+</body>
+</html>
