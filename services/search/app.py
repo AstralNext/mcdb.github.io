@@ -1,4 +1,4 @@
-"""MCDB 标题模糊检索 HTTP 服务（无向量）。
+"""MCDB 标题模糊检索 HTTP 服务。
 
 启动：
   pip install -r requirements.txt

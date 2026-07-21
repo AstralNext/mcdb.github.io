@@ -4,7 +4,7 @@
 - 模糊搜索：[`https://search.mcdb.astral.fan/`](https://search.mcdb.astral.fan/)（Cloudflare Worker）
 - 仓库：[`AstralNext/mcdb.github.io`](https://github.com/AstralNext/mcdb.github.io)
 
-**无向量。** Pages 只提供汉化 JSON；搜索走 `search.mcdb.astral.fan`。
+Pages 只提供汉化 JSON；搜索走 `search.mcdb.astral.fan`。
 
 ## 1. 汉化 I18n（本站）
 
@@ -22,7 +22,7 @@ Content-Type: application/json
 {"q":"发条","limit":12}
 ```
 
-对 en / zh / slug 做精确 > 前缀 > 包含。Worker 从本站读取 `api/v1/titles/titles.pack.json` 作为数据源（内部用，不必对用户宣传为「向量」）。
+对 en / zh / slug 做精确 > 前缀 > 包含。Worker 从本站读取 `api/v1/titles/titles.pack.json` 作为数据源。
 
 部署 Worker：
 

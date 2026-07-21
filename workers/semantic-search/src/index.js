@@ -1,6 +1,6 @@
 /**
  * MCDB Cloudflare Worker — title fuzzy search (en / zh / slug).
- * No vectors. Data: titles.pack.json
+ * Data: titles.pack.json
  */
 
 /** @type {null | { count: number, meta: any }} */
@@ -48,7 +48,7 @@ export default {
           host: "search.mcdb.astral.fan",
           endpoints: ["GET /health", "POST /v1/search"],
           example: { q: "发条", limit: 12 },
-          note: "title fuzzy match only — no vectors",
+          note: "title fuzzy match on en / zh / slug",
         }),
       );
     } catch (e) {
