@@ -1,10 +1,9 @@
-# MCDB semantic search — Cloudflare Worker
+# MCDB title fuzzy search — Cloudflare Worker
 # Deploy: npx wrangler deploy
-# Custom domain: bind search.mcdb.astral.fan in Dashboard
 
 name = "mcdb"
 main = "src/index.js"
 compatibility_date = "2024-11-12"
 
 [vars]
-DATA_BASE_URL = "https://mcdb.astral.fan/api/v1/semantic"
+DATA_BASE_URL = "https://mcdb.astral.fan/api/v1/titles"

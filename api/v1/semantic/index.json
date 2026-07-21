@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "dim": 256,
-  "count": 143395,
-  "embed": "char-unigram+bigram-hash",
-  "mcdb_version": "f2332fc8770d90fc",
-  "vec_encoding": "float32le",
-  "i8_encoding": "int8_per_row_scale"
-}
