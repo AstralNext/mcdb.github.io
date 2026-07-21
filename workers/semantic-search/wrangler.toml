@@ -1,16 +1,6 @@
-"""
-MCDB semantic search — Cloudflare Worker.
-
-Deploy:
-  cd workers/semantic-search
-  npx wrangler deploy
-
-Custom domain (Dashboard or):
-  npx wrangler domains add search.mcdb.astral.fan
-
-POST /v1/search  {"q":"发条","limit":12}
-GET  /health
-"""
+# MCDB semantic search — Cloudflare Worker
+# Deploy: npx wrangler deploy
+# Custom domain: bind search.mcdb.astral.fan in Dashboard
 
 name = "mcdb-semantic-search"
 main = "src/index.js"
