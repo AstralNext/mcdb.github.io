@@ -1,63 +1,42 @@
-# MCDB 静态 API（汉化分片 + 标题模糊搜索）
+# MCDB 静态 API
 
-站点：[`https://mcdb.astral.fan/`](https://mcdb.astral.fan/)  
-仓库：[`AstralNext/mcdb.github.io`](https://github.com/AstralNext/mcdb.github.io)
+- 汉化站点：[`https://mcdb.astral.fan/`](https://mcdb.astral.fan/)（只托管译名分片）
+- 模糊搜索：[`https://search.mcdb.astral.fan/`](https://search.mcdb.astral.fan/)（Cloudflare Worker）
+- 仓库：[`AstralNext/mcdb.github.io`](https://github.com/AstralNext/mcdb.github.io)
 
-## 1. 汉化 I18n
+**无向量。** Pages 只提供汉化 JSON；搜索走 `search.mcdb.astral.fan`。
+
+## 1. 汉化 I18n（本站）
 
 | 路径 | 说明 |
 |------|------|
 | `/api/v1/manifest.json` | 汉化 manifest |
 | `/api/v1/i18n/{hex}.json` | `hex = utf8(id[0:2]).hex()` |
 
-## 2. 标题索引（模糊匹配数据）
-
-| 路径 | 说明 |
-|------|------|
-| `/api/v1/titles/manifest.json` | 条数 |
-| `/api/v1/titles/titles.pack.json` | `{id,en,zh,slug,type}` |
-
-`zh` = `zh_human` ?? `zh_ai` ?? `zh_draft`（有效译名）。**无向量。**
-
-## 3. 在线模糊搜索（Cloudflare Worker）
-
-```bash
-cd workers/semantic-search
-npx wrangler deploy
-```
+## 2. 模糊搜索（search 子域）
 
 ```http
-POST https://mcdb.1806190090.workers.dev/v1/search
+POST https://search.mcdb.astral.fan/v1/search
 Content-Type: application/json
 
 {"q":"发条","limit":12}
 ```
 
-Worker 只加载 `titles.pack.json`，对 en/zh/slug 做精确 > 前缀 > 包含。
+对 en / zh / slug 做精确 > 前缀 > 包含。Worker 从本站读取 `api/v1/titles/titles.pack.json` 作为数据源（内部用，不必对用户宣传为「向量」）。
+
+部署 Worker：
+
+```bash
+cd workers/semantic-search
+npx wrangler deploy
+# Dashboard 绑定自定义域 search.mcdb.astral.fan
+```
 
 ## 自动同步
 
-工作流 `sync-mcdb-hourly`：每小时从 [`AstralNext/MCDB`](https://github.com/AstralNext/MCDB) 编译最新对照表，重建：
-
-- `api/v1/i18n/*` 汉化分片
-- `api/v1/titles/*` 模糊搜索索引
-
-也可在 Actions 里手动 **Run workflow**。
-
-## 重建（本地）
-
-```bash
-# 先在 MCDB 仓库 compile
-python ../mcdb/scripts/compile_dist.py
-
-# 汉化分片
-python scripts/build_i18n_api.py --clean
-
-# 标题模糊索引
-python scripts/build_titles_api.py --clean --src ../mcdb/dist/bilingual.jsonl
-```
+工作流 `sync-mcdb-hourly`：每小时从 MCDB 重建 `api/v1/i18n/*` 与 `api/v1/titles/*`。
 
 ## 与 AML
 
-- 列表译名 → `GET /api/v1/i18n/...`
-- 中文搜 → 本地 bilingual 模糊，或 `POST .../v1/search`
+- 列表译名 → `GET https://mcdb.astral.fan/api/v1/i18n/...`
+- 中文搜 → `POST https://search.mcdb.astral.fan/v1/search`

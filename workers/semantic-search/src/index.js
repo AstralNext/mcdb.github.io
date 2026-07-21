@@ -45,8 +45,10 @@ export default {
       return cors(
         json({
           service: "mcdb-title-search",
+          host: "search.mcdb.astral.fan",
           endpoints: ["GET /health", "POST /v1/search"],
           example: { q: "发条", limit: 12 },
+          note: "title fuzzy match only — no vectors",
         }),
       );
     } catch (e) {
