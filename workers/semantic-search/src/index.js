@@ -111,23 +111,6 @@ async function ensureIndex(env) {
   return LOADING;
 }
 
-function buildBrowseIndex(meta, count) {
-  /** @type {Record<string, number[]>} */
-  const byType = {};
-  for (let row = 0; row < count; row++) {
-    const t = meta.type[row] || "other";
-    (byType[t] ||= []).push(row);
-  }
-  for (const rows of Object.values(byType)) {
-    rows.sort((a, b) =>
-      (meta.en[a] || "").localeCompare(meta.en[b] || "", "en", {
-        sensitivity: "base",
-      }),
-    );
-  }
-  return byType;
-}
-
 async function loadIndex(env) {
   const base = (env.DATA_BASE_URL || "").replace(/\/$/, "");
   if (!base) throw new Error("DATA_BASE_URL not set");
@@ -138,7 +121,7 @@ async function loadIndex(env) {
   const count = meta.id?.length ?? 0;
   if (!count) throw new Error("empty titles.pack.json");
 
-  return { count, meta, byType: buildBrowseIndex(meta, count) };
+  return { count, meta };
 }
 
 function rowToHit(meta, row, score = null) {
@@ -154,16 +137,24 @@ function rowToHit(meta, row, score = null) {
 }
 
 function browse(idx, type, page, limit) {
-  const rows = idx.byType[type] || [];
+  const { meta, count } = idx;
   const offset = page * limit;
-  const slice = rows.slice(offset, offset + limit);
+  let total = 0;
+  const items = [];
+  for (let row = 0; row < count; row++) {
+    if ((meta.type[row] || "") !== type) continue;
+    if (total >= offset && items.length < limit) {
+      items.push(rowToHit(meta, row));
+    }
+    total += 1;
+  }
   return {
     type,
     page,
     limit,
-    total: rows.length,
-    pages: Math.ceil(rows.length / limit) || 0,
-    items: slice.map((row) => rowToHit(idx.meta, row)),
+    total,
+    pages: Math.ceil(total / limit) || 0,
+    items,
   };
 }
 
