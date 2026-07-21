@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""从 bilingual.jsonl 生成标题模糊搜索静态索引（无向量）。
+"""从 bilingual.jsonl（或 review）生成标题模糊搜索静态索引。
 
 输出：
   api/v1/titles/manifest.json
   api/v1/titles/titles.pack.json   # {id,en,zh,slug,type} 并行数组
-
-用法：
-  python scripts/build_titles_api.py --clean
-  python scripts/build_titles_api.py --src ../mcdb/dist/bilingual.jsonl
+  zh = zh_human ?? zh_ai ?? zh_draft ?? zh
 """
 
 from __future__ import annotations
@@ -23,6 +20,14 @@ DEFAULT_SRC = ROOT.parent / "mcdb" / "dist" / "bilingual.jsonl"
 OUT = ROOT / "api" / "v1" / "titles"
 
 
+def effective_zh(o: dict) -> str:
+    for key in ("zh_human", "zh_ai", "zh_draft", "zh"):
+        v = str(o.get(key) or "").strip()
+        if v:
+            return v
+    return ""
+
+
 def build(src: Path, clean: bool) -> None:
     if not src.is_file():
         raise SystemExit(f"缺少源文件：{src}")
@@ -36,15 +41,24 @@ def build(src: Path, clean: bool) -> None:
     zhs: list[str] = []
     slugs: list[str] = []
     types: list[str] = []
+    skipped = 0
     with src.open(encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             o = json.loads(line)
+            if str(o.get("status") or "") == "skip":
+                skipped += 1
+                continue
+            zh = effective_zh(o)
+            en = str(o.get("en") or "").strip()
+            if not en or not zh:
+                skipped += 1
+                continue
             ids.append(str(o.get("id") or ""))
-            ens.append(str(o.get("en") or ""))
-            zhs.append(str(o.get("zh") or ""))
+            ens.append(en)
+            zhs.append(zh)
             slugs.append(str(o.get("slug") or ""))
             types.append(str(o.get("type") or ""))
 
@@ -60,6 +74,7 @@ def build(src: Path, clean: bool) -> None:
         "kind": "titles",
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "count": len(ids),
+        "skipped": skipped,
         "search": "title-fuzzy",
         "files": {
             "titles.pack.json": {
