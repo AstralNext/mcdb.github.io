@@ -1,0 +1,27 @@
+{
+  "api": 1,
+  "kind": "i18n",
+  "generated_at": "2026-07-21T02:51:22Z",
+  "mcdb_version": "f428f672e9c24dba",
+  "count": 143395,
+  "shard_by": "id_prefix2_hex",
+  "shard_name": "utf8(id[:2]).hex().lower()",
+  "entry_fields": {
+    "zh": "中文标题（必有）",
+    "en": "英文标题（必有）",
+    "desc_zh": "中文简介（可选）",
+    "slug": "Modrinth slug（可选）",
+    "type": "project type（可选）"
+  },
+  "endpoints": {
+    "manifest": "api/v1/manifest.json",
+    "shard": "api/v1/i18n/{prefix2_hex}.json",
+    "example": "api/v1/i18n/4141.json"
+  },
+  "usage": {
+    "lookup": "prefixHex = Buffer.from(id.slice(0,2),'utf8').toString('hex'); GET i18n/{prefixHex}.json 后取 [id]",
+    "batch": "同一页多个 id 按 prefixHex 去重后并行 GET 分片，客户端内存合并",
+    "dart": "prefixHex = utf8.encode(id.substring(0,2)).map((b)=>b.toRadixString(16).padLeft(2,'0')).join()"
+  },
+  "shard_count": 3782
+}

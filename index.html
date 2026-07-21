@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCDB I18n API</title>
+  <style>
+    :root { color-scheme: light dark; font-family: "Segoe UI", system-ui, sans-serif; }
+    body { max-width: 42rem; margin: 2rem auto; padding: 0 1.25rem; line-height: 1.55; }
+    code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; }
+    pre { padding: 0.9rem 1rem; overflow: auto; border-radius: 8px; background: color-mix(in srgb, CanvasText 8%, Canvas); }
+    a { color: inherit; }
+    h1 { font-size: 1.6rem; margin-bottom: 0.4rem; }
+    .muted { opacity: 0.75; }
+  </style>
+</head>
+<body>
+  <h1>MCDB 汉化 API</h1>
+  <p class="muted">静态分片 · 无服务端 · 供启动器按需查询中文标题/简介</p>
+
+  <h2>Endpoints</h2>
+  <ul>
+    <li><a href="api/v1/manifest.json"><code>api/v1/manifest.json</code></a></li>
+    <li><code>api/v1/i18n/{hex(utf8(id[0:2]))}.json</code> — 例：<a href="api/v1/i18n/4141.json"><code>4141.json</code></a>（AA）</li>
+  </ul>
+
+  <h2>示例</h2>
+  <pre>const id = "AANobbMI";
+const hex = [...new TextEncoder().encode(id.slice(0, 2))]
+  .map(b => b.toString(16).padStart(2, "0")).join("");
+const shard = await fetch(`api/v1/i18n/${hex}.json`).then(r => r.json());
+console.log(shard[id]?.zh); // 钠</pre>
+
+  <p class="muted">源数据来自 <a href="https://github.com/AstralNext/MCDB">AstralNext/MCDB</a> · 向量检索另建服务</p>
+</body>
+</html>
