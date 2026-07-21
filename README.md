@@ -2,10 +2,16 @@
 
 GitHub Pages 托管的 Modrinth 项目中英对照查询服务（无服务端计算）。
 
-## 在线地址（推送并开启 Pages 后）
+## 在线地址
 
-- Manifest：`https://astralnext.github.io/mcdb.github.io/api/v1/manifest.json`
-- 分片示例：`https://astralnext.github.io/mcdb.github.io/api/v1/i18n/4141.json`（`AA` → hex）
+仓库：[`AstralNext/mcdb.github.io-`](https://github.com/AstralNext/mcdb.github.io-)
+
+- Raw Manifest：`https://raw.githubusercontent.com/AstralNext/mcdb.github.io-/main/api/v1/manifest.json`
+- Raw 分片示例：`https://raw.githubusercontent.com/AstralNext/mcdb.github.io-/main/api/v1/i18n/4141.json`
+- GitHub Pages（需在仓库 Settings → Pages 开启，branch `main` / root）：  
+  `https://astralnext.github.io/mcdb.github.io-/api/v1/manifest.json`
+
+> 仓库名带尾缀 `-`，Pages 路径也含该后缀。建议客户端优先用 `raw.githubusercontent.com` 或自备 CDN。
 
 ## 分片规则（大小写安全）
 
