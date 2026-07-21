@@ -1,0 +1,64 @@
+# 每小时从 MCDB 仓库拉取最新对照表，重建汉化分片 + 标题模糊索引
+name: sync-mcdb-hourly
+
+on:
+  schedule:
+    # 错开 AI 纠正整点，约 :35 拉取
+    - cron: "35 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-mcdb
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v4
+
+      - name: Checkout MCDB data
+        uses: actions/checkout@v4
+        with:
+          repository: AstralNext/MCDB
+          path: _mcdb
+          # 公开仓库只读即可
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile bilingual from MCDB review
+        run: |
+          python _mcdb/scripts/compile_dist.py --out _mcdb/dist
+          test -f _mcdb/dist/bilingual.jsonl
+          python -c "import pathlib; p=pathlib.Path('_mcdb/dist/bilingual.jsonl'); print('bytes', p.stat().st_size)"
+
+      - name: Rebuild i18n + titles APIs
+        run: |
+          python scripts/build_i18n_api.py --clean \
+            --bilingual _mcdb/dist/bilingual.jsonl \
+            --version-file _mcdb/dist/version.json
+          python scripts/build_titles_api.py --clean \
+            --src _mcdb/dist/bilingual.jsonl
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 勿提交 _mcdb 工作副本
+          rm -rf _mcdb
+          git add api/v1/manifest.json api/v1/i18n api/v1/titles || true
+          if git diff --staged --quiet; then
+            echo "No API changes"
+          else
+            VER=$(python -c "import json;print(json.load(open('api/v1/manifest.json')).get('mcdb_version') or json.load(open('api/v1/titles/manifest.json')).get('generated_at','?'))" 2>/dev/null || echo unknown)
+            git commit -m "chore(api): hourly sync from MCDB (${VER})"
+            git pull --rebase --autostash origin HEAD || true
+            git push
+          fi

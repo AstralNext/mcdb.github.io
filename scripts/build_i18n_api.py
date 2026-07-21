@@ -39,6 +39,14 @@ def load_mcdb_version(path: Path) -> str | None:
         return None
 
 
+def effective_zh(o: dict) -> str:
+    for key in ("zh_human", "zh_ai", "zh_draft", "zh"):
+        v = str(o.get(key) or "").strip()
+        if v:
+            return v
+    return ""
+
+
 def row_from_line(line: str) -> tuple[str, dict] | None:
     line = line.strip()
     if not line:
@@ -47,9 +55,11 @@ def row_from_line(line: str) -> tuple[str, dict] | None:
         o = json.loads(line)
     except json.JSONDecodeError:
         return None
+    if str(o.get("status") or "") == "skip":
+        return None
     pid = str(o.get("id") or "").strip()
     en = str(o.get("en") or "").strip()
-    zh = str(o.get("zh") or "").strip()
+    zh = effective_zh(o)
     if not pid or not en or not zh:
         return None
     desc_zh = str(o.get("desc_zh") or o.get("description_zh") or "").strip()

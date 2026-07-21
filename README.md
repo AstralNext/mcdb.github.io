@@ -35,7 +35,16 @@ Content-Type: application/json
 
 Worker 只加载 `titles.pack.json`，对 en/zh/slug 做精确 > 前缀 > 包含。
 
-## 重建
+## 自动同步
+
+工作流 `sync-mcdb-hourly`：每小时从 [`AstralNext/MCDB`](https://github.com/AstralNext/MCDB) 编译最新对照表，重建：
+
+- `api/v1/i18n/*` 汉化分片
+- `api/v1/titles/*` 模糊搜索索引
+
+也可在 Actions 里手动 **Run workflow**。
+
+## 重建（本地）
 
 ```bash
 # 先在 MCDB 仓库 compile
