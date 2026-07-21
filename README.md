@@ -1,54 +1,68 @@
-# MCDB 静态汉化 API
+# MCDB 静态 API（汉化 + 向量）
 
-GitHub Pages 托管的 Modrinth 项目中英对照查询服务（无服务端计算）。
+GitHub Pages：[`https://mcdb.astral.fan/`](https://mcdb.astral.fan/)  
+仓库：[`AstralNext/mcdb.github.io`](https://github.com/AstralNext/mcdb.github.io)
 
-## 在线地址
+## 1. 汉化 I18n（按需分片）
 
-仓库：[`AstralNext/mcdb.github.io-`](https://github.com/AstralNext/mcdb.github.io-)
+| 路径 | 说明 |
+|------|------|
+| `/api/v1/manifest.json` | 汉化 manifest |
+| `/api/v1/i18n/{hex}.json` | `hex = utf8(id[0:2]).hex()` |
 
-- Raw Manifest：`https://raw.githubusercontent.com/AstralNext/mcdb.github.io-/main/api/v1/manifest.json`
-- Raw 分片示例：`https://raw.githubusercontent.com/AstralNext/mcdb.github.io-/main/api/v1/i18n/4141.json`
-- GitHub Pages（需在仓库 Settings → Pages 开启，branch `main` / root）：  
-  `https://astralnext.github.io/mcdb.github.io-/api/v1/manifest.json`
+例：`AANobbMI` → `4141` → [`/api/v1/i18n/4141.json`](https://mcdb.astral.fan/api/v1/i18n/4141.json)
 
-> 仓库名带尾缀 `-`，Pages 路径也含该后缀。建议客户端优先用 `raw.githubusercontent.com` 或自备 CDN。
+## 2. 向量 Semantic（静态数据）
 
-## 分片规则（大小写安全）
+| 路径 | 说明 |
+|------|------|
+| `/api/v1/semantic/manifest.json` | 分片列表与用法 |
+| `/api/v1/semantic/index.json` | dim/count/embed |
+| `/api/v1/semantic/meta.jsonl` | 与向量行对齐的 id/en/zh |
+| `/api/v1/semantic/vectors/part-*.f32` | float32 LE 分片（&lt;100MB） |
+| `/api/v1/semantic/vectors.i8.bin` | int8 量化整包 ~35MB |
+| `/api/v1/semantic/scales.f32` | i8 每行尺度 |
 
-```
-prefixHex = hex(utf8(id[0:2]))   // 小写
-URL       = api/v1/i18n/{prefixHex}.json
-```
+**说明**：GitHub Pages **不能**做全库检索计算。静态文件供下载 / 自建服务加载。
 
-例：`AANobbMI` → `AA` → `4141` → `api/v1/i18n/4141.json` → 键 `AANobbMI`。
+## 3. 在线检索服务（推荐给 AML）
 
-> 不用原始两字符当文件名，避免 Windows/Git 大小写折叠导致分片互相覆盖。
-
-## 客户端怎么用
-
-1. `GET api/v1/manifest.json`
-2. 对每个 id 算 `prefixHex`，去重后并行拉分片
-3. 在分片 JSON 里用完整 id 取值：`{ zh, en, desc_zh?, slug?, type? }`
-
-**不要**启动时下载全部分片；按需 + LRU。
-
-### Dart 示例
-
-```dart
-String shardName(String id) {
-  final p = id.length >= 2 ? id.substring(0, 2) : id.padRight(2, '_');
-  return utf8.encode(p).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-}
-```
-
-## 重新构建
+目录：`services/search`（FastAPI）
 
 ```bash
-python scripts/build_i18n_api.py --clean
+cd services/search
+pip install -r requirements.txt
+set MCDB_SEMANTIC_DIR=..\..\api\v1\semantic
+uvicorn app:app --host 0.0.0.0 --port 8080
 ```
 
-默认读取 `../mcdb/dist/bilingual.jsonl`。
+```http
+POST /v1/search
+Content-Type: application/json
 
-## 与向量服务
+{"q":"机械动力","limit":12}
+```
 
-本仓库当前只提供 **i18n（汉化）**。语义向量检索另做。
+Docker：
+
+```bash
+docker build -t mcdb-search services/search
+docker run -p 8080:8080 -v /path/to/api/v1/semantic:/data mcdb-search
+```
+
+可将 `search.mcdb.astral.fan` CNAME 到该服务主机。
+
+## 重建
+
+```bash
+# 汉化（读 ../mcdb/dist/bilingual.jsonl）
+python scripts/build_i18n_api.py --clean
+
+# 向量（读本地 AML MCDB 缓存 semantic/）
+python scripts/build_semantic_api.py --clean --root "%APPDATA%/com.example/aml/mcdb"
+```
+
+## 与 AML
+
+- 列表译名 → `GET mcdb.astral.fan/api/v1/i18n/...`
+- 中文语义搜 → `POST` 自建 `/v1/search`（勿在客户端加载 140MB 向量）
