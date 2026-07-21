@@ -79,8 +79,30 @@ def build(mcdb_root: Path, clean: bool) -> None:
         )
         print(f"  wrote {name} rows=[{start},{end}) bytes={len(blob)}")
 
-    # --- meta.jsonl 原样拷贝（已 <100MB）---
+    # --- meta 原样 + Worker 用紧凑 pack ---
     shutil.copy2(meta_path, OUT / "meta.jsonl")
+    ids: list[str] = []
+    ens: list[str] = []
+    zhs: list[str] = []
+    slugs: list[str] = []
+    types: list[str] = []
+    with meta_path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            o = json.loads(line)
+            ids.append(str(o.get("id") or ""))
+            ens.append(str(o.get("en") or ""))
+            zhs.append(str(o.get("zh") or ""))
+            slugs.append(str(o.get("slug") or ""))
+            types.append(str(o.get("type") or ""))
+    pack = {"id": ids, "en": ens, "zh": zhs, "slug": slugs, "type": types}
+    (OUT / "meta.pack.json").write_text(
+        json.dumps(pack, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    print(f"  wrote meta.pack.json rows={len(ids)}")
 
     # --- int8 量化（整文件约 35MB，便于边缘/轻量服务）---
     try:
@@ -136,15 +158,17 @@ def build(mcdb_root: Path, clean: bool) -> None:
             "manifest": "api/v1/semantic/manifest.json",
             "index": "api/v1/semantic/index.json",
             "meta": "api/v1/semantic/meta.jsonl",
+            "meta_pack": "api/v1/semantic/meta.pack.json",
             "vectors_parts": "api/v1/semantic/vectors/part-XXX.f32",
             "vectors_i8": "api/v1/semantic/vectors.i8.bin",
             "scales": "api/v1/semantic/scales.f32",
-            "search": "由 services/search 部署：POST /v1/search",
+            "search": "Cloudflare Worker：POST /v1/search（见 workers/semantic-search）",
         },
         "parts": parts,
         "usage": {
             "download": "按需拉取 part 分片或整包 i8；客户端/服务端 embed 须与 compile_dist.py 一致",
-            "search_service": "推荐用本仓库 services/search FastAPI，内存常驻 mmap，对外只暴露 Top-K",
+            "search_cf": "workers/semantic-search：Worker 冷启动加载 i8+scales+meta.pack，isolate 内缓存后 Top-K",
+            "search_service": "备用 services/search FastAPI",
             "embed": "char-unigram+bigram-hash dim=256 md5；与 AML Rust mcdb_embed 对齐",
         },
     }

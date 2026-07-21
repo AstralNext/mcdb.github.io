@@ -25,44 +25,41 @@ GitHub Pages：[`https://mcdb.astral.fan/`](https://mcdb.astral.fan/)
 
 **说明**：GitHub Pages **不能**做全库检索计算。静态文件供下载 / 自建服务加载。
 
-## 3. 在线检索服务（推荐给 AML）
+## 3. 在线检索
 
-目录：`services/search`（FastAPI）
+### Cloudflare Worker（推荐）
 
 ```bash
-cd services/search
-pip install -r requirements.txt
-set MCDB_SEMANTIC_DIR=..\..\api\v1\semantic
-uvicorn app:app --host 0.0.0.0 --port 8080
+cd workers/semantic-search
+npx wrangler deploy
+# 绑定自定义域（Dashboard → Workers → 触发器 → 添加域）
+# search.mcdb.astral.fan
 ```
 
 ```http
-POST /v1/search
+POST https://search.mcdb.astral.fan/v1/search
 Content-Type: application/json
 
-{"q":"机械动力","limit":12}
+{"q":"发条","limit":12}
 ```
 
-Docker：
+Worker 冷启动从 `mcdb.astral.fan` 拉取 `vectors.i8.bin` + `scales.f32` + `meta.pack.json`，isolate 内缓存后做 Top-K。
 
-```bash
-docker build -t mcdb-search services/search
-docker run -p 8080:8080 -v /path/to/api/v1/semantic:/data mcdb-search
-```
+### FastAPI 备用
 
-可将 `search.mcdb.astral.fan` CNAME 到该服务主机。
+目录：`services/search`（见上文）。
 
 ## 重建
 
 ```bash
-# 汉化（读 ../mcdb/dist/bilingual.jsonl）
+# 汉化
 python scripts/build_i18n_api.py --clean
 
-# 向量（读本地 AML MCDB 缓存 semantic/）
+# 向量（含 meta.pack.json / i8）
 python scripts/build_semantic_api.py --clean --root "%APPDATA%/com.example/aml/mcdb"
 ```
 
 ## 与 AML
 
-- 列表译名 → `GET mcdb.astral.fan/api/v1/i18n/...`
-- 中文语义搜 → `POST` 自建 `/v1/search`（勿在客户端加载 140MB 向量）
+- 列表译名 → `GET https://mcdb.astral.fan/api/v1/i18n/...`
+- 中文语义搜 → `POST https://search.mcdb.astral.fan/v1/search`
