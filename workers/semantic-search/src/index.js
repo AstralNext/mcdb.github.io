@@ -1,9 +1,20 @@
 /**
  * MCDB Cloudflare Worker — semantic Top-K search (int8 vectors).
  * Embed must match compile_dist.py / AML rust mcdb_embed.rs
+ *
+ * Ranking = cosine(hash-vector) + lexical boost (exact/prefix/token).
+ * Query aliases cover CN community names (e.g. 机械动力 → Create).
  */
 
 const DIM = 256;
+const VEC_POOL = 250;
+
+/** CN/community aliases → official titles / slugs to boost */
+const QUERY_ALIASES = {
+  机械动力: ["Create", "create"],
+  物品管理: ["Just Enough Items", "jei"],
+  光影: ["shader", "shaders"],
+};
 
 /** @type {null | { i8: Int8Array, scales: Float32Array, meta: any, count: number, dim: number }} */
 let CACHE = null;
@@ -25,6 +36,7 @@ export default {
             loaded: !!idx,
             count: idx?.count ?? 0,
             embed: "char-unigram+bigram-hash",
+            rank: "vector+lexical+alias",
             dim: DIM,
           }),
         );
@@ -145,8 +157,67 @@ async function loadIndex(env) {
   };
 }
 
+function normalize(text) {
+  return [...(text || "").toLowerCase()].filter((c) => !/\s/.test(c)).join("");
+}
+
+function expandQueries(query) {
+  const out = [query];
+  const nq = normalize(query);
+  for (const [key, alts] of Object.entries(QUERY_ALIASES)) {
+    if (normalize(key) === nq) {
+      for (const a of alts) out.push(a);
+    }
+  }
+  return out;
+}
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Lexical boost; exact title/slug must beat compound slug-token hits. */
+function lexicalBoost(rawQuery, en, zh, slug) {
+  const q = normalize(rawQuery);
+  if (!q) return 0;
+
+  const nEn = normalize(en);
+  const nZh = normalize(zh);
+  const nSlug = (slug || "").toLowerCase();
+  const ascii = /^[a-z0-9_.:-]+$/i.test(rawQuery.trim());
+  let best = 0;
+
+  if (nEn === q || nZh === q) best = Math.max(best, 5.0);
+  if (nSlug === q) best = Math.max(best, 4.5);
+
+  if (ascii) {
+    const tokens = nSlug.split(/[-_.]+/).filter(Boolean);
+    if (tokens.includes(q) && nSlug !== q) best = Math.max(best, 1.15);
+    const enLower = (en || "").toLowerCase();
+    const re = new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(q)}(?:[^a-z0-9]|$)`, "i");
+    if (re.test(enLower) && nEn !== q) best = Math.max(best, 1.35);
+    return best;
+  }
+
+  // CJK / mixed: prefix + contains with length ratio (prefer short titles)
+  for (const title of [nZh, nEn]) {
+    if (!title) continue;
+    if (title === q) continue;
+    if (title.startsWith(q)) {
+      best = Math.max(best, 1.6 + q.length / Math.max(title.length, 1));
+    } else if (title.includes(q)) {
+      best = Math.max(best, 0.85 * (q.length / Math.max(title.length, 1)));
+    }
+  }
+  if (nSlug.includes(q) && nSlug !== q) {
+    best = Math.max(best, 0.5 * (q.length / Math.max(nSlug.length, 1)));
+  }
+  return best;
+}
+
 function search(idx, query, limit) {
-  const q = embedText(query);
+  const variants = expandQueries(query);
+  const qVec = embedText(query);
   const { i8, scales, meta, count, dim } = idx;
   const scores = new Float64Array(count);
 
@@ -155,28 +226,52 @@ function search(idx, query, limit) {
     const base = row * dim;
     let dot = 0;
     for (let j = 0; j < dim; j++) {
-      dot += q[j] * (i8[base + j] * scale);
+      dot += qVec[j] * (i8[base + j] * scale);
     }
     scores[row] = dot;
   }
 
-  // partial top-k
-  const idxArr = new Int32Array(count);
-  for (let i = 0; i < count; i++) idxArr[i] = i;
-  // simple selection for small limit
-  const top = [];
+  // vector candidate pool
+  const poolN = Math.min(count, Math.max(limit * 25, VEC_POOL));
+  const pool = [];
   for (let row = 0; row < count; row++) {
     const score = scores[row];
-    if (top.length < limit) {
-      top.push({ score, row });
-      top.sort((a, b) => b.score - a.score);
-    } else if (score > top[top.length - 1].score) {
-      top[top.length - 1] = { score, row };
-      top.sort((a, b) => b.score - a.score);
+    if (pool.length < poolN) {
+      pool.push({ score, row });
+      pool.sort((a, b) => b.score - a.score);
+    } else if (score > pool[pool.length - 1].score) {
+      pool[pool.length - 1] = { score, row };
+      pool.sort((a, b) => b.score - a.score);
     }
   }
 
-  return top.map(({ score, row }) => ({
+  const cand = new Map();
+  for (const { row, score } of pool) cand.set(row, score);
+
+  // lexical / alias scan (full meta — ~140k, fine in Worker)
+  for (let row = 0; row < count; row++) {
+    let lex = 0;
+    for (const v of variants) {
+      lex = Math.max(
+        lex,
+        lexicalBoost(v, meta.en[row] || "", meta.zh[row] || "", meta.slug[row] || ""),
+      );
+    }
+    if (lex > 0) {
+      const prev = cand.has(row) ? cand.get(row) : scores[row];
+      cand.set(row, prev + lex);
+    } else if (cand.has(row)) {
+      // keep vector-only candidates
+    }
+  }
+
+  const ranked = [];
+  for (const [row, score] of cand) {
+    ranked.push({ row, score });
+  }
+  ranked.sort((a, b) => b.score - a.score);
+
+  return ranked.slice(0, limit).map(({ score, row }) => ({
     id: meta.id[row] || "",
     en: meta.en[row] || "",
     zh: meta.zh[row] || "",

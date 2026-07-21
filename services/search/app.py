@@ -25,6 +25,12 @@ from pydantic import BaseModel, Field
 
 DIM = 256
 EMBED_NAME = "char-unigram+bigram-hash"
+VEC_POOL = 250
+QUERY_ALIASES: dict[str, list[str]] = {
+    "机械动力": ["Create", "create"],
+    "物品管理": ["Just Enough Items", "jei"],
+    "光影": ["shader", "shaders"],
+}
 
 app = FastAPI(title="MCDB Semantic Search", version="1")
 app.add_middleware(
@@ -67,6 +73,52 @@ def embed_text(text: str) -> np.ndarray:
     return vec
 
 
+def _norm(text: str) -> str:
+    return re.sub(r"\s+", "", (text or "").lower())
+
+
+def expand_queries(query: str) -> list[str]:
+    out = [query]
+    nq = _norm(query)
+    for key, alts in QUERY_ALIASES.items():
+        if _norm(key) == nq:
+            out.extend(alts)
+    return out
+
+
+def lexical_boost(raw_query: str, en: str, zh: str, slug: str) -> float:
+    q = _norm(raw_query)
+    if not q:
+        return 0.0
+    n_en, n_zh = _norm(en), _norm(zh)
+    n_slug = (slug or "").lower()
+    ascii_q = bool(re.fullmatch(r"[a-z0-9_.:-]+", raw_query.strip(), flags=re.I))
+    best = 0.0
+    if n_en == q or n_zh == q:
+        best = max(best, 5.0)
+    if n_slug == q:
+        best = max(best, 4.5)
+    if ascii_q:
+        tokens = [t for t in re.split(r"[-_.]+", n_slug) if t]
+        if q in tokens and n_slug != q:
+            best = max(best, 1.15)
+        if n_en != q and re.search(
+            rf"(?:^|[^a-z0-9]){re.escape(q)}(?:[^a-z0-9]|$)", en or "", flags=re.I
+        ):
+            best = max(best, 1.35)
+        return best
+    for title in (n_zh, n_en):
+        if not title or title == q:
+            continue
+        if title.startswith(q):
+            best = max(best, 1.6 + len(q) / max(len(title), 1))
+        elif q in title:
+            best = max(best, 0.85 * (len(q) / max(len(title), 1)))
+    if n_slug != q and q in n_slug:
+        best = max(best, 0.5 * (len(q) / max(len(n_slug), 1)))
+    return best
+
+
 class Index:
     def __init__(self, root: Path):
         self.root = root
@@ -103,23 +155,41 @@ class Index:
             self.matrix = self.matrix[: self.count]
 
     def search(self, query: str, limit: int) -> list[dict]:
-        q = embed_text(query)
-        scores = self.matrix @ q
-        if limit >= self.count:
-            idx = np.argsort(-scores)
+        variants = expand_queries(query)
+        scores = self.matrix @ embed_text(query)
+        pool_n = min(self.count, max(limit * 25, VEC_POOL))
+        if pool_n >= self.count:
+            pool_idx = np.argsort(-scores)
         else:
-            # 部分排序
-            idx = np.argpartition(-scores, limit)[:limit]
-            idx = idx[np.argsort(-scores[idx])]
+            pool_idx = np.argpartition(-scores, pool_n)[:pool_n]
+            pool_idx = pool_idx[np.argsort(-scores[pool_idx])]
+
+        cand: dict[int, float] = {int(r): float(scores[int(r)]) for r in pool_idx}
+        for row, rec in enumerate(self.records):
+            lex = 0.0
+            for v in variants:
+                lex = max(
+                    lex,
+                    lexical_boost(
+                        v,
+                        rec.get("en") or "",
+                        rec.get("zh") or "",
+                        rec.get("slug") or "",
+                    ),
+                )
+            if lex > 0:
+                cand[row] = float(scores[row]) + lex
+
+        ranked = sorted(cand.items(), key=lambda x: -x[1])[:limit]
         out = []
-        for row in idx[:limit]:
-            rec = self.records[int(row)]
+        for row, score in ranked:
+            rec = self.records[row]
             out.append(
                 {
                     "id": rec.get("id", ""),
                     "en": rec.get("en", ""),
                     "zh": rec.get("zh", ""),
-                    "score": round(float(scores[int(row)]), 6),
+                    "score": round(float(score), 6),
                     "slug": rec.get("slug") or None,
                     "type": rec.get("type") or None,
                 }
@@ -154,6 +224,7 @@ def health():
         "loaded": loaded,
         "count": count,
         "embed": EMBED_NAME,
+        "rank": "vector+lexical+alias",
     }
 
 

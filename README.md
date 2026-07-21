@@ -45,6 +45,8 @@ Content-Type: application/json
 
 Worker 冷启动从 `mcdb.astral.fan` 拉取 `vectors.i8.bin` + `scales.f32` + `meta.pack.json`，isolate 内缓存后做 Top-K。
 
+排序：`余弦(hash向量) + 词法加分(精确/前缀/词边界) + 查询别名`（例如「机械动力」→ Create / 创作）。无需重编向量即可改善英文精确命中与社区惯用名。
+
 ### FastAPI 备用
 
 目录：`services/search`（见上文）。
