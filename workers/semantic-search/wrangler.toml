@@ -2,7 +2,7 @@
 # Deploy: npx wrangler deploy
 # Custom domain: bind search.mcdb.astral.fan in Dashboard
 
-name = "mcdb-semantic-search"
+name = "mcdb"
 main = "src/index.js"
 compatibility_date = "2024-11-12"
 
