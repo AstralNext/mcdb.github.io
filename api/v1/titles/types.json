@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-22T23:32:59Z",
-  "total": 144398,
+  "generated_at": "2026-07-23T01:04:46Z",
+  "total": 144537,
   "types": [
     {
       "id": "mod",
@@ -15,7 +15,7 @@
     {
       "id": "modpack",
       "label": "整合包",
-      "count": 17642
+      "count": 17781
     },
     {
       "id": "minecraft_java_server",
