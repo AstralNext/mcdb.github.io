@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-08-26T18:16:12Z",
-  "total": 154434,
+  "generated_at": "2026-08-26T20:36:20Z",
+  "total": 154769,
   "types": [
     {
       "id": "mod",
       "label": "模组",
-      "count": 99619
+      "count": 99847
     },
     {
       "id": "resourcepack",
       "label": "资源包",
-      "count": 33565
+      "count": 33672
     },
     {
       "id": "modpack",
