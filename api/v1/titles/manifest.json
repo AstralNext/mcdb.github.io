@@ -1,14 +1,14 @@
 {
   "api": 1,
   "kind": "titles",
-  "generated_at": "2026-09-08T16:47:44Z",
-  "count": 157937,
+  "generated_at": "2026-09-08T20:07:08Z",
+  "count": 158092,
   "skipped": 0,
   "search": "title-fuzzy",
   "files": {
     "titles.pack.json": {
-      "bytes": 12323066,
-      "rows": 157937
+      "bytes": 12334769,
+      "rows": 158092
     },
     "types.json": {
       "bytes": 595,
