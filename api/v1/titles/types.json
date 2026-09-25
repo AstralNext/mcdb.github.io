@@ -1,21 +1,21 @@
 {
-  "generated_at": "2026-09-25T18:48:50Z",
-  "total": 161335,
+  "generated_at": "2026-09-25T22:40:49Z",
+  "total": 161517,
   "types": [
     {
       "id": "mod",
       "label": "模组",
-      "count": 103801
+      "count": 103966
     },
     {
       "id": "resourcepack",
       "label": "资源包",
-      "count": 35499
+      "count": 35502
     },
     {
       "id": "modpack",
       "label": "整合包",
-      "count": 18783
+      "count": 18797
     },
     {
       "id": "minecraft_java_server",
