@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-10-02T20:52:42Z",
-  "total": 163664,
+  "generated_at": "2026-10-03T00:38:33Z",
+  "total": 163910,
   "types": [
     {
       "id": "mod",
       "label": "模组",
-      "count": 105209
+      "count": 105436
     },
     {
       "id": "resourcepack",
       "label": "资源包",
-      "count": 36091
+      "count": 36095
     },
     {
       "id": "modpack",
       "label": "整合包",
-      "count": 19005
+      "count": 19019
     },
     {
       "id": "minecraft_java_server",
       "label": "服务器",
-      "count": 2436
+      "count": 2437
     },
     {
       "id": "shader",
