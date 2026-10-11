@@ -1,9 +1,9 @@
 {
   "api": 1,
   "kind": "i18n",
-  "generated_at": "2026-10-11T20:29:38Z",
-  "mcdb_version": "1c2a2811677b5115",
-  "count": 165762,
+  "generated_at": "2026-10-11T23:51:18Z",
+  "mcdb_version": "c2002221ca1bbbdc",
+  "count": 165859,
   "shard_by": "id_prefix2_hex",
   "shard_name": "utf8(id[:2]).hex().lower()",
   "entry_fields": {
