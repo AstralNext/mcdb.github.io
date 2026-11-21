@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-11-21T08:38:15Z",
-  "total": 174886,
+  "generated_at": "2026-11-21T16:54:29Z",
+  "total": 174926,
   "types": [
     {
       "id": "mod",
       "label": "模组",
-      "count": 112021
+      "count": 112061
     },
     {
       "id": "resourcepack",
