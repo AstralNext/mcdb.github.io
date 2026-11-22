@@ -1,7 +1,7 @@
 {
   "api": 1,
   "kind": "i18n",
-  "generated_at": "2026-11-22T10:07:55Z",
+  "generated_at": "2026-11-22T17:58:46Z",
   "mcdb_version": "c1242a4845c1c5b3",
   "count": 175107,
   "shard_by": "id_prefix2_hex",
